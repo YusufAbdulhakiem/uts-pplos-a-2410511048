@@ -1,98 +1,116 @@
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const axios = require('axios');
-const pool = require('../db');
+const express = require('express')
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
+const axios = require('axios')
+const db = require('../db')
+const auth = require('../middleware/jwt')
 
-const router = express.Router();
+const r = express.Router()
 
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+const at = u => jwt.sign(u, process.env.JWT_SECRET, { expiresIn: '15m' })
+const rt = u => jwt.sign(u, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' })
 
-  const [rows] = await pool.query('SELECT * FROM users WHERE email=?', [email]);
-  if (!rows.length) return res.status(401).json({ message: 'Invalid' });
+r.post('/register', async (req, res) => {
+  const { name, email, password } = req.body
+  const hash = await bcrypt.hash(password, 10)
+  await db.query(
+    "INSERT INTO users(name,email,password) VALUES(?,?,?)",
+    [name, email, hash]
+  )
+  res.sendStatus(201)
+})
 
-  const user = rows[0];
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(401).json({ message: 'Invalid' });
+r.post('/login', async (req, res) => {
+  const { email, password } = req.body
+  const [u] = await db.query("SELECT * FROM users WHERE email=?", [email])
+  if (!u.length) return res.sendStatus(404)
 
-  const access = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '15m' });
-  const refresh = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  const ok = await bcrypt.compare(password, u[0].password)
+  if (!ok) return res.sendStatus(401)
 
-  await pool.query('UPDATE users SET refresh_token=? WHERE id=?', [refresh, user.id]);
+  const payload = { id: u[0].id, email: u[0].email }
+  const accessToken = at(payload)
+  const refreshToken = rt(payload)
 
-  res.json({ access_token: access, refresh_token: refresh });
-});
+  await db.query(
+    "INSERT INTO refresh_tokens(user_id,token,expires_at) VALUES(?,?,DATE_ADD(NOW(), INTERVAL 7 DAY))",
+    [u[0].id, refreshToken]
+  )
 
-router.post('/refresh', async (req, res) => {
-  const { refresh_token } = req.body;
+  res.json({ accessToken, refreshToken })
+})
 
-  try {
-    const decoded = jwt.verify(refresh_token, process.env.JWT_SECRET);
+r.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body
+  const [t] = await db.query(
+    "SELECT * FROM refresh_tokens WHERE token=?",
+    [refreshToken]
+  )
+  if (!t.length) return res.sendStatus(403)
 
-    const [rows] = await pool.query('SELECT * FROM users WHERE id=? AND refresh_token=?',
-      [decoded.id, refresh_token]);
+  const u = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
+  res.json({ accessToken: at({ id: u.id, email: u.email }) })
+})
 
-    if (!rows.length) return res.status(403).json({ message: 'Invalid' });
+r.post('/logout', auth, async (req, res) => {
+  const token = req.headers.authorization.split(' ')[1]
+  await db.query("INSERT INTO token_blacklist(token) VALUES(?)", [token])
+  res.sendStatus(204)
+})
 
-    const access = jwt.sign({ id: decoded.id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+r.get('/me', auth, async (req, res) => {
+  const [u] = await db.query(
+    "SELECT id,name,email,photo FROM users WHERE id=?",
+    [req.user.id]
+  )
+  res.json(u[0])
+})
 
-    res.json({ access_token: access });
-  } catch {
-    res.status(403).json({ message: 'Invalid' });
-  }
-});
+r.get('/oauth/google', (req, res) => {
+  const url =
+    `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}` +
+    `&redirect_uri=${process.env.GOOGLE_REDIRECT}` +
+    `&response_type=code&scope=profile email`
+  res.redirect(url)
+})
 
-router.post('/logout', async (req, res) => {
-  const token = req.headers.authorization.split(' ')[1];
+r.get('/oauth/google/callback', async (req, res) => {
+  const { code } = req.query
 
-  await pool.query(
-    'INSERT INTO token_blacklist (token, expired_at) VALUES (?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))',
-    [token]
-  );
-
-  res.json({ message: 'Logged out' });
-});
-
-router.get('/oauth/google', (req, res) => {
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${process.env.GOOGLE_REDIRECT}&response_type=code&scope=profile email`;
-  res.redirect(url);
-});
-
-router.get('/oauth/google/callback', async (req, res) => {
-  const { code } = req.query;
-
-  const { data } = await axios.post('https://oauth2.googleapis.com/token', {
+  const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
+    code,
     client_id: process.env.GOOGLE_CLIENT_ID,
     client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    code,
     redirect_uri: process.env.GOOGLE_REDIRECT,
     grant_type: 'authorization_code'
-  });
+  })
+
+  const { access_token } = tokenRes.data
 
   const userInfo = await axios.get(
     'https://www.googleapis.com/oauth2/v2/userinfo',
-    { headers: { Authorization: `Bearer ${data.access_token}` } }
-  );
+    { headers: { Authorization: `Bearer ${access_token}` } }
+  )
 
-  const { email, name, picture } = userInfo.data;
+  const { name, email, picture, id } = userInfo.data
 
-  let [rows] = await pool.query('SELECT * FROM users WHERE email=?', [email]);
+  let [u] = await db.query("SELECT * FROM users WHERE email=?", [email])
+  let userId
 
-  if (!rows.length) {
-    await pool.query(
-      'INSERT INTO users (name, email, oauth_provider, photo) VALUES (?, ?, ?, ?)',
-      [name, email, 'google', picture]
-    );
-    [rows] = await pool.query('SELECT * FROM users WHERE email=?', [email]);
-  }
+  if (!u.length) {
+    const [ins] = await db.query(
+      "INSERT INTO users(name,email,photo,oauth_provider) VALUES(?,?,?,?)",
+      [name, email, picture, 'google']
+    )
+    userId = ins.insertId
+  } else userId = u[0].id
 
-  const user = rows[0];
+  await db.query(
+    "INSERT INTO oauth_accounts(user_id,provider,provider_user_id,access_token) VALUES(?,?,?,?)",
+    [userId, 'google', id, access_token]
+  )
 
-  const access = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '15m' });
-  const refresh = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.json({ msg: 'OAuth success' })
+})
 
-  res.json({ access_token: access, refresh_token: refresh });
-});
-
-module.exports = router;
+module.exports = r

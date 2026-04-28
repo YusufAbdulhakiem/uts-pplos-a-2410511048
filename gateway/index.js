@@ -1,47 +1,37 @@
 require('dotenv').config()
 const express = require('express')
 const rateLimit = require('express-rate-limit')
-const jwt = require('jsonwebtoken')
 const { createProxyMiddleware } = require('http-proxy-middleware')
+
+const jwtVerify = require('./middleware/jwtVerify')
 
 const app = express()
 
 // RATE LIMIT
-const limiter = rateLimit({
+app.use(rateLimit({
   windowMs: 60 * 1000,
   max: 60
-})
+}))
+
+app.use(express.json())
 
 // JWT CHECK
-function verifyJWT(req, res, next) {
-  if (req.path.startsWith('/auth')) return next()
+app.use(jwtVerify)
 
-  const token = req.headers.authorization?.split(' ')[1]
-  if (!token) return res.sendStatus(401)
-
-  try {
-    jwt.verify(token, process.env.JWT_SECRET)
-    next()
-  } catch {
-    res.sendStatus(403)
-  }
-}
-
-app.use(limiter)
-app.use(verifyJWT)
-
-// ROUTING KE AUTH SERVICE
+// ROUTING
 app.use('/auth', createProxyMiddleware({
-  target: 'http://localhost:3001',
+  target: process.env.AUTH_SERVICE_URL,
   changeOrigin: true
 }))
 
-// ROUTING KE PROPERTY SERVICE
 app.use('/properties', createProxyMiddleware({
-  target: 'http://localhost:3002',
+  target: process.env.PROPERTY_SERVICE_URL,
   changeOrigin: true
 }))
 
-app.listen(3000, () => {
-  console.log('Gateway berjalan di port 3000')
-})
+app.use('/bookings', createProxyMiddleware({
+  target: process.env.BOOKING_SERVICE_URL,
+  changeOrigin: true
+}))
+
+app.listen(3000, () => console.log('Gateway running'))

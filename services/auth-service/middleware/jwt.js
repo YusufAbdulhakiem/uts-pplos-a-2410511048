@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken')
-const db = require('../db')
+const db = require('../config/db')
 
 module.exports = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1]
@@ -12,7 +12,7 @@ module.exports = async (req, res, next) => {
   if (b.length) return res.sendStatus(401)
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET)
+    req.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
     next()
   } catch {
     res.sendStatus(403)

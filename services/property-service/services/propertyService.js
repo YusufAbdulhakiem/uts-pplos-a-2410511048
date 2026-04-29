@@ -1,48 +1,31 @@
 const model = require('../models/propertyModel')
 
-exports.create = async (req, res) => {
-  const { title, location, price } = req.body
+exports.create = async (userId, data) => {
+  const { title, location, price } = data
 
   if (!title || !location || typeof price !== 'number') {
-    return res.status(422).json({ msg: 'Invalid input' })
+    throw { status: 422, message: 'Invalid input' }
   }
 
-  await model.create({ title, location, price })
-
-  res.status(201).json({ msg: 'Property created' })
+  await model.create(userId, data)
+  return { message: 'Property created' }
 }
 
-exports.list = async (req, res) => {
-  let { page = 1, per_page = 5, location, min_price, max_price } = req.query
-
-  page = parseInt(page)
-  per_page = parseInt(per_page)
-
-  const data = await model.findAll({
-    page,
-    per_page,
-    location,
-    min_price,
-    max_price
-  })
-
-  res.json(data)
+exports.list = async (userId, query) => {
+  return model.findAll(userId, query)
 }
 
-exports.detail = async (req, res) => {
-  const data = await model.findById(req.params.id)
-
-  if (!data) return res.status(404).json({ msg: 'Not found' })
-
-  res.json(data)
+exports.detail = async (userId, id) => {
+  const data = await model.findById(userId, id)
+  if (!data) throw { status: 404, message: 'Not found' }
+  return data
 }
 
-exports.update = async (req, res) => {
-  await model.update(req.params.id, req.body)
-  res.json({ msg: 'Updated' })
+exports.update = async (userId, id, data) => {
+  await model.update(userId, id, data)
+  return { message: 'Updated' }
 }
 
-exports.remove = async (req, res) => {
-  await model.remove(req.params.id)
-  res.status(204).send()
+exports.remove = async (userId, id) => {
+  await model.remove(userId, id)
 }

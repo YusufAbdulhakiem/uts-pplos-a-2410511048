@@ -1,17 +1,17 @@
 const db = require('../config/db')
 
-exports.create = async ({ title, location, price }) => {
+exports.create = async (userId, { title, location, price }) => {
   await db.query(
-    "INSERT INTO properties(title,location,price) VALUES(?,?,?)",
-    [title, location, price]
+    "INSERT INTO properties(user_id,title,location,price) VALUES(?,?,?,?)",
+    [userId, title, location, price]
   )
 }
 
-exports.findAll = async ({ page, per_page, location, min_price, max_price }) => {
+exports.findAll = async (userId, { page = 1, per_page = 5, location, min_price, max_price }) => {
   const offset = (page - 1) * per_page
 
-  let sql = "SELECT * FROM properties WHERE 1=1"
-  const params = []
+  let sql = "SELECT * FROM properties WHERE user_id=?"
+  const params = [userId]
 
   if (location) {
     sql += " AND location LIKE ?"
@@ -29,32 +29,30 @@ exports.findAll = async ({ page, per_page, location, min_price, max_price }) => 
   }
 
   sql += " LIMIT ? OFFSET ?"
-  params.push(per_page, offset)
+  params.push(Number(per_page), Number(offset))
 
   const [rows] = await db.query(sql, params)
   return rows
 }
 
-exports.findById = async (id) => {
+exports.findById = async (userId, id) => {
   const [rows] = await db.query(
-    "SELECT * FROM properties WHERE id=?",
-    [id]
+    "SELECT * FROM properties WHERE id=? AND user_id=?",
+    [id, userId]
   )
   return rows[0]
 }
 
-exports.update = async (id, data) => {
-  const { title, location, price } = data
-
+exports.update = async (userId, id, { title, location, price }) => {
   await db.query(
-    "UPDATE properties SET title=?, location=?, price=? WHERE id=?",
-    [title, location, price, id]
+    "UPDATE properties SET title=?, location=?, price=? WHERE id=? AND user_id=?",
+    [title, location, price, id, userId]
   )
 }
 
-exports.remove = async (id) => {
+exports.remove = async (userId, id) => {
   await db.query(
-    "DELETE FROM properties WHERE id=?",
-    [id]
+    "DELETE FROM properties WHERE id=? AND user_id=?",
+    [id, userId]
   )
 }

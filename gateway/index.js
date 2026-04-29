@@ -22,7 +22,7 @@ function verifyJWT(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
 
-    // 🔥 kirim user ke semua service
+    // kirim user ke semua service
     req.headers['x-user-id'] = decoded.id
 
     next()

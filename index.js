@@ -6,13 +6,13 @@ const { createProxyMiddleware } = require('http-proxy-middleware')
 
 const app = express()
 
-// RATE LIMIT
+// rate limit
 const limiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 60
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS),
+  max: parseInt(process.env.RATE_LIMIT_MAX)
 })
 
-// JWT CHECK
+// jwt check
 function verifyJWT(req, res, next) {
   if (req.path.startsWith('/auth')) return next()
 
@@ -20,7 +20,8 @@ function verifyJWT(req, res, next) {
   if (!token) return res.sendStatus(401)
 
   try {
-    jwt.verify(token, process.env.JWT_SECRET)
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
+    req.headers['x-user-id'] = decoded.id
     next()
   } catch {
     res.sendStatus(403)
@@ -30,18 +31,30 @@ function verifyJWT(req, res, next) {
 app.use(limiter)
 app.use(verifyJWT)
 
-// ROUTING KE AUTH SERVICE
+// auth
 app.use('/auth', createProxyMiddleware({
-  target: 'http://localhost:3001',
-  changeOrigin: true
+  target: process.env.AUTH_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/auth': ''
+  }
 }))
 
-// ROUTING KE PROPERTY SERVICE
+// property
 app.use('/properties', createProxyMiddleware({
-  target: 'http://localhost:3002',
+  target: process.env.PROPERTY_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/properties': ''
+  }
+}))
+
+// booking
+app.use('/bookings', createProxyMiddleware({
+  target: process.env.BOOKING_SERVICE_URL,
   changeOrigin: true
 }))
 
-app.listen(3000, () => {
-  console.log('Gateway berjalan di port 3000')
+app.listen(process.env.PORT, () => {
+  console.log('gateway jalan di port', process.env.PORT)
 })

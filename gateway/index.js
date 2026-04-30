@@ -56,5 +56,5 @@ app.use('/bookings', createProxyMiddleware({
 }))
 
 app.listen(process.env.PORT, () => {
-  console.log('gateway jalan di port', process.env.PORT)
+  console.log('Property service running on port', process.env.PORT)
 })

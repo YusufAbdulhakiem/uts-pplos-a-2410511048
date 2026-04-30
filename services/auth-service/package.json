@@ -1,0 +1,59 @@
+{
+<<<<<<< HEAD
+  "name": "property-service",
+=======
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
+    "http-proxy-middleware": "^3.0.5",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1"
+  },
+  "name": "gateway",
+>>>>>>> 4a567c5b26fb25b41a71ff7b9dd962ebf7b4ea3d
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+<<<<<<< HEAD
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+<<<<<<<< HEAD:package.json
+    "express-rate-limit": "^8.4.1",
+    "google-auth-library": "^10.6.2",
+    "http-proxy-middleware": "^3.0.5",
+    "joi": "^18.1.2",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+========
+>>>>>>>> 4a567c5b26fb25b41a71ff7b9dd962ebf7b4ea3d:services/property-service/package.json
+    "mysql2": "^3.22.3"
+  },
+  "devDependencies": {},
+=======
+>>>>>>> 4a567c5b26fb25b41a71ff7b9dd962ebf7b4ea3d
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YusufAbdulhakiem/uts-pplos-a-2410511048.git"
+  },
+<<<<<<< HEAD
+=======
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+>>>>>>> 4a567c5b26fb25b41a71ff7b9dd962ebf7b4ea3d
+  "bugs": {
+    "url": "https://github.com/YusufAbdulhakiem/uts-pplos-a-2410511048/issues"
+  },
+  "homepage": "https://github.com/YusufAbdulhakiem/uts-pplos-a-2410511048#readme"
+}

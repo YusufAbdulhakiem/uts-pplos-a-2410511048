@@ -1,13 +1,10 @@
 require('dotenv').config() 
 
 const express = require('express')
-const routes = require('./routes/propertyRoutes')
+const routes = require('./routes/propertyRoute')
 const authGuard = require('./middlewares/authGuard')
 
 const app = express()
-
-// DEBUG START
-console.log('Property service starting...')
 
 // middleware
 app.use(express.json())
@@ -16,20 +13,7 @@ app.use(express.json())
 app.use(authGuard)
 
 // routes
-app.use('/auth', routes)
-
-// health check (biar bisa test di browser)
-app.get('/', (req, res) => {
-  res.send('Property service OK')
-})
-
-// error handler global
-app.use((err, req, res, next) => {
-  console.error('ERROR:', err)
-  res.status(err.status || 500).json({
-    message: err.message || 'Internal Server Error'
-  })
-})
+app.use('/', routes)
 
 const PORT = process.env.PORT || 3002
 

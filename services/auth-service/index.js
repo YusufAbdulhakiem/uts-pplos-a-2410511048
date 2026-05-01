@@ -3,8 +3,10 @@ const express = require('express')
 const authRoutes = require('./routes/auth')
 
 const app = express()
+
 app.use(express.json())
 
+// routes
 app.use('/', authRoutes)
 
 app.listen(process.env.PORT, () => {

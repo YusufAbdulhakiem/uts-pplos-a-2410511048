@@ -2,19 +2,29 @@ const jwt = require('jsonwebtoken')
 const db = require('../config/db')
 
 module.exports = async (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1]
-  if (!token) return res.sendStatus(401)
-
-  const [b] = await db.query(
-    "SELECT * FROM token_blacklist WHERE token=?",
-    [token]
-  )
-  if (b.length) return res.sendStatus(401)
-
   try {
-    req.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
+    const authHeader = req.headers.authorization
+
+    if (!authHeader || !authHeader.startsWith('Bearer '))
+      return res.sendStatus(401)
+
+    const token = authHeader.split(' ')[1]
+
+    // cek blacklist
+    const [b] = await db.query(
+      "SELECT * FROM token_blacklist WHERE token=?",
+      [token]
+    )
+
+    if (b.length) return res.sendStatus(401)
+
+    // verify JWT
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
+
+    req.user = decoded
+
     next()
-  } catch {
-    res.sendStatus(403)
+  } catch (err) {
+    return res.sendStatus(403)
   }
 }

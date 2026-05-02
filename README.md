@@ -329,17 +329,6 @@ Database: MySQL
 
 ---
 
-## Project Structure
-
-project-root/
-├── gateway/
-├── services/
-│   ├── auth-service/
-│   ├── property-service/
-│   └── booking-service/
-├── postman/
-└── README.md
-
 ---
 
 ## Features

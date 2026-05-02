@@ -319,24 +319,3 @@ DB_PASSWORD=
 
 ---
 
-## Tech Stack
-
-Gateway: Node.js + Express
-Auth Service: Node.js + JWT
-Property Service: Node.js
-Booking Service: Laravel
-Database: MySQL
-
----
-
----
-
-## Features
-
-* Microservices architecture
-* API Gateway
-* JWT Authentication
-* Google OAuth
-* CRUD Property
-* CRUD Booking
-* Inter-service communication

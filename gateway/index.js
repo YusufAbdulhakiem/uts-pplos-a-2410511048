@@ -12,7 +12,7 @@ app.use(rateLimit({
   max: parseInt(process.env.RATE_LIMIT_MAX)
 }))
 
-// middleware
+// jwt middleware
 function verifyJWT(req, res, next) {
   if (req.originalUrl.startsWith('/auth')) return next()
 
@@ -21,10 +21,7 @@ function verifyJWT(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
-
-    // kirim ke service lain
     req.headers['x-user-id'] = decoded.id
-
     next()
   } catch {
     return res.sendStatus(403)
@@ -34,7 +31,7 @@ function verifyJWT(req, res, next) {
 app.use(verifyJWT)
 
 
-// auth
+// auth service
 app.use('/auth', createProxyMiddleware({
   target: process.env.AUTH_SERVICE_URL,
   changeOrigin: true,
@@ -44,7 +41,7 @@ app.use('/auth', createProxyMiddleware({
 }))
 
 
-// property
+// property service
 app.use('/properties', createProxyMiddleware({
   target: process.env.PROPERTY_SERVICE_URL,
   changeOrigin: true,
@@ -54,12 +51,21 @@ app.use('/properties', createProxyMiddleware({
 }))
 
 
-// booking
+// booking service (laravel)
 app.use('/bookings', createProxyMiddleware({
   target: process.env.BOOKING_SERVICE_URL,
-  changeOrigin: true
-}))
+  changeOrigin: true,
 
+  pathRewrite: (path, req) => {
+    const newPath = req.originalUrl.replace(/^\/bookings/, '/api/bookings')
+    console.log('REWRITE:', req.originalUrl, '=>', newPath)
+    return newPath
+  },
+
+  onProxyReq: (proxyReq, req) => {
+    console.log('FORWARD TO:', proxyReq.path)
+  }
+}))
 
 app.listen(process.env.PORT, () => {
   console.log('Gateway running on port', process.env.PORT)

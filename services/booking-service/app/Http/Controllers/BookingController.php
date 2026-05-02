@@ -8,29 +8,41 @@ use App\Models\Booking;
 
 class BookingController extends Controller
 {
-    public function store(Request $req)
-    {
+    
+public function store(Request $req)
+{
+    try {
+        // validasi
         $req->validate([
             'property_id' => 'required|integer',
             'booking_date' => 'required|date'
         ]);
 
         $userId = $req->header('x-user-id');
-        $token = $req->header('Authorization');
+        $token = $req->headers->get('authorization');
 
-        if (!$userId) {
-            return response()->json(['msg' => 'Unauthorized'], 401);
+        if (!$userId || !$token) {
+            return response()->json([
+                'error' => 'Unauthorized',
+                'user_id' => $userId,
+                'token' => $token
+            ], 401);
         }
 
-        // cek property ke property-service
+        // cek property via gateway
         $property = Http::withHeaders([
             'Authorization' => $token
-        ])->get(env('PROPERTY_SERVICE_URL') . '/properties/' . $req->property_id);
+        ])->get('http://localhost:3000/properties/' . $req->property_id);
 
-        if ($property->failed()) {
-            return response()->json(['msg' => 'Property not found'], 404);
+        if ($property->status() !== 200) {
+            return response()->json([
+                'error' => 'Property check failed',
+                'status' => $property->status(),
+                'body' => $property->body()
+            ], 400);
         }
 
+        // simpan booking
         $booking = Booking::create([
             'user_id' => $userId,
             'property_id' => $req->property_id,
@@ -39,7 +51,15 @@ class BookingController extends Controller
         ]);
 
         return response()->json($booking, 201);
+
+    } catch (\Throwable $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile()
+        ], 500);
     }
+}
 
     public function index(Request $req)
     {

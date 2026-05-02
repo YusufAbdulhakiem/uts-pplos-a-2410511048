@@ -11,7 +11,7 @@ router.post('/refresh', controller.refresh)
 router.post('/logout', auth, controller.logout)
 router.get('/me', auth, controller.me)
 
-// OAUTH GOOGLE (INI YANG HILANG)
+// OAUTH GOOGLE
 router.get('/oauth/google', controller.googleRedirect)
 router.get('/oauth/google/callback', controller.googleCallback)
 

@@ -58,12 +58,10 @@ app.use('/bookings', createProxyMiddleware({
 
   pathRewrite: (path, req) => {
     const newPath = req.originalUrl.replace(/^\/bookings/, '/api/bookings')
-    console.log('REWRITE:', req.originalUrl, '=>', newPath)
     return newPath
   },
 
   onProxyReq: (proxyReq, req) => {
-    console.log('FORWARD TO:', proxyReq.path)
   }
 }))
 
